@@ -7,9 +7,9 @@ A cloud-based music subscription web application built with Python and AWS servi
 | Name | Student ID |
 |------|------------|
 | Akash Ramesh | S4097941 |
-| | |
-| | |
-| | |
+| Abdul Rahman Sahabudeen | S4123171|
+| Murali GMD | S4110587 |
+| Varun S V | S4129948 |
 
 ## How to Run
 
