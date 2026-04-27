@@ -5,16 +5,16 @@ AWS_REGION = 'us-east-1'
 TABLE_NAME = 'login'
 
 LOGIN_DATA = [
-    {"email": "s4097940@student.rmit.edu.au", "user_name": "AkashRamesh0", "password": "012345"},
-    {"email": "s4097941@student.rmit.edu.au", "user_name": "AkashRamesh1", "password": "123456"},
-    {"email": "s4097942@student.rmit.edu.au", "user_name": "AkashRamesh2", "password": "234567"},
-    {"email": "s4097943@student.rmit.edu.au", "user_name": "AkashRamesh3", "password": "345678"},
-    {"email": "s4097944@student.rmit.edu.au", "user_name": "AkashRamesh4", "password": "456789"},
-    {"email": "s4097945@student.rmit.edu.au", "user_name": "AkashRamesh5", "password": "567890"},
-    {"email": "s4097946@student.rmit.edu.au", "user_name": "AkashRamesh6", "password": "678901"},
-    {"email": "s4097947@student.rmit.edu.au", "user_name": "AkashRamesh7", "password": "789012"},
-    {"email": "s4097948@student.rmit.edu.au", "user_name": "AkashRamesh8", "password": "890123"},
-    {"email": "s4097949@student.rmit.edu.au", "user_name": "AkashRamesh9", "password": "901234"},
+    {"email": "s4123170@student.rmit.edu.au", "user_name": "AbdulRahman", "password": "012345"},
+    {"email": "s4123171@student.rmit.edu.au", "user_name": "AbdulRahman1", "password": "123456"},
+    {"email": "s4123172@student.rmit.edu.au", "user_name": "AbdulRahman2", "password": "234567"},
+    {"email": "s4123173@student.rmit.edu.au", "user_name": "AbdulRahman3", "password": "345678"},
+    {"email": "s4123174@student.rmit.edu.au", "user_name": "AbdulRahman4", "password": "456789"},
+    {"email": "s4123175@student.rmit.edu.au", "user_name": "AbdulRahman5", "password": "567890"},
+    {"email": "s4123176@student.rmit.edu.au", "user_name": "AbdulRahman6", "password": "678901"},
+    {"email": "s4123177@student.rmit.edu.au", "user_name": "AbdulRahman7", "password": "789012"},
+    {"email": "s4123178@student.rmit.edu.au", "user_name": "AbdulRahman8", "password": "890123"},
+    {"email": "s4123179@student.rmit.edu.au", "user_name": "AbdulRahman9", "password": "901234"},
 ]
 
 def create_login_table(dynamodb):
