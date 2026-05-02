@@ -7,17 +7,51 @@ TABLE_NAME = 'music'
 JSON_FILE  = '2026a2_songs.json'
 
 def create_music_table(dynamodb):
-    """Create the music table with artist (PK) and title#album (SK)."""
+    """
+    Create the music table.
+
+    Key schema:
+      PK : artist      (String)
+      SK : title#album (String) - composite prevents duplicate song+album per artist
+
+    LSI  artist-year-lsi  : PK=artist, SK=year
+      → efficient range queries like "all Taylor Swift songs from 2008"
+        using Query instead of Scan + in-memory filter
+
+    GSI  year-index        : PK=year
+      → efficient lookup of all songs from a specific year
+        without scanning the full table
+    """
     try:
         table = dynamodb.create_table(
             TableName=TABLE_NAME,
             KeySchema=[
-                {'AttributeName': 'artist',      'KeyType': 'HASH'},   # Partition key
-                {'AttributeName': 'title#album',  'KeyType': 'RANGE'},  # Sort key
+                {'AttributeName': 'artist',      'KeyType': 'HASH'},
+                {'AttributeName': 'title#album', 'KeyType': 'RANGE'},
             ],
             AttributeDefinitions=[
                 {'AttributeName': 'artist',      'AttributeType': 'S'},
-                {'AttributeName': 'title#album',  'AttributeType': 'S'},
+                {'AttributeName': 'title#album', 'AttributeType': 'S'},
+                {'AttributeName': 'year',        'AttributeType': 'S'},
+            ],
+            LocalSecondaryIndexes=[
+                {
+                    'IndexName': 'artist-year-lsi',
+                    'KeySchema': [
+                        {'AttributeName': 'artist', 'KeyType': 'HASH'},
+                        {'AttributeName': 'year',   'KeyType': 'RANGE'},
+                    ],
+                    'Projection': {'ProjectionType': 'ALL'}
+                }
+            ],
+            GlobalSecondaryIndexes=[
+                {
+                    'IndexName': 'year-index',
+                    'KeySchema': [
+                        {'AttributeName': 'year', 'KeyType': 'HASH'},
+                    ],
+                    'Projection': {'ProjectionType': 'ALL'}
+                }
             ],
             BillingMode='PAY_PER_REQUEST'
         )

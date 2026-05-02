@@ -81,47 +81,49 @@ def login():
 @app.route("/music", methods=["GET"])
 def get_music():
     artist = request.args.get("artist", "").strip()
-    title = request.args.get("title", "").strip().lower()
-    year = request.args.get("year", "").strip()
-    album = request.args.get("album", "").strip().lower()
+    title  = request.args.get("title",  "").strip().lower()
+    year   = request.args.get("year",   "").strip()
+    album  = request.args.get("album",  "").strip().lower()
 
     try:
-        if artist:
-            response = music_table.query(
+        if artist and year:
+            # LSI: artist-year-lsi — exact year match on artist partition
+            result = music_table.query(
+                IndexName="artist-year-lsi",
+                KeyConditionExpression=Key("artist").eq(artist) & Key("year").eq(year)
+            )
+            songs = result.get("Items", [])
+        elif artist:
+            # Base table Query on partition key
+            result = music_table.query(
                 KeyConditionExpression=Key("artist").eq(artist)
             )
-            songs = response.get("Items", [])
+            songs = result.get("Items", [])
+        elif year:
+            # GSI: year-index — all songs from a given year without full Scan
+            result = music_table.query(
+                IndexName="year-index",
+                KeyConditionExpression=Key("year").eq(year)
+            )
+            songs = result.get("Items", [])
         else:
-            response = music_table.scan()
-            songs = response.get("Items", [])
+            # No key available — full Scan with pagination
+            result = music_table.scan()
+            songs  = result.get("Items", [])
+            while "LastEvaluatedKey" in result:
+                result = music_table.scan(ExclusiveStartKey=result["LastEvaluatedKey"])
+                songs.extend(result.get("Items", []))
 
-            while "LastEvaluatedKey" in response:
-                response = music_table.scan(
-                    ExclusiveStartKey=response["LastEvaluatedKey"]
-                )
-                songs.extend(response.get("Items", []))
+        # In-memory filter for non-key attributes (title, album)
+        if title:
+            songs = [s for s in songs if title in s.get("title", "").lower()]
+        if album:
+            songs = [s for s in songs if album in s.get("album", "").lower()]
 
-        filtered_songs = []
-
-        for song in songs:
-            if title and title not in song.get("title", "").lower():
-                continue
-
-            if year and year != str(song.get("year", "")):
-                continue
-
-            if album and album not in song.get("album", "").lower():
-                continue
-
-            filtered_songs.append(song)
-
-        return jsonify({"songs": filtered_songs}), 200
+        return jsonify({"songs": songs}), 200
 
     except Exception as e:
-        return jsonify({
-            "message": "Error retrieving music",
-            "error": str(e)
-        }), 500
+        return jsonify({"message": "Error retrieving music", "error": str(e)}), 500
 
 
 @app.route("/subscriptions", methods=["GET"])
@@ -216,4 +218,4 @@ def unsubscribe():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=80)

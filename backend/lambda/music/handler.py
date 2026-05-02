@@ -30,22 +30,37 @@ def get_music(params):
     album  = params.get('album',  '').strip()
 
     try:
-        # Use Query (efficient) when artist is provided
-        if artist:
+        if artist and year:
+            # LSI: artist-year-lsi — exact year match on artist partition
+            result = music_table.query(
+                IndexName='artist-year-lsi',
+                KeyConditionExpression=Key('artist').eq(artist) & Key('year').eq(year)
+            )
+            items = result.get('Items', [])
+        elif artist:
+            # Base table Query on partition key
             result = music_table.query(
                 KeyConditionExpression=Key('artist').eq(artist)
             )
             items = result.get('Items', [])
+        elif year:
+            # GSI: year-index — all songs from a given year without full Scan
+            result = music_table.query(
+                IndexName='year-index',
+                KeyConditionExpression=Key('year').eq(year)
+            )
+            items = result.get('Items', [])
         else:
-            # Fall back to Scan only when no partition key is available
+            # No key available — full Scan with pagination
             result = music_table.scan()
             items  = result.get('Items', [])
+            while 'LastEvaluatedKey' in result:
+                result = music_table.scan(ExclusiveStartKey=result['LastEvaluatedKey'])
+                items.extend(result.get('Items', []))
 
-        # Apply in-memory filters for remaining attributes
+        # In-memory filter for non-key attributes (title, album)
         if title:
             items = [i for i in items if title.lower() in i.get('title', '').lower()]
-        if year:
-            items = [i for i in items if i.get('year', '') == year]
         if album:
             items = [i for i in items if album.lower() in i.get('album', '').lower()]
 

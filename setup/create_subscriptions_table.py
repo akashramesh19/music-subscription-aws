@@ -7,12 +7,15 @@ TABLE_NAME = 'subscriptions'
 def create_subscriptions_table(dynamodb):
     """
     Create subscriptions table.
-    
-    Schema:
-      Partition Key : email        (String) - the logged-in user
-      Sort Key      : title#album  (String) - matches music table sort key
-                                             ensures a user can't subscribe
-                                             to the same song+album twice
+
+    Key schema:
+      PK : email        (String) - the logged-in user
+      SK : title#album  (String) - prevents duplicate subscription per user
+
+    GSI  artist-index : PK=artist
+      → enables querying all subscriptions for a given artist across users,
+        e.g. "how many users are subscribed to Taylor Swift"
+        without scanning the full table
     """
     try:
         table = dynamodb.create_table(
@@ -24,6 +27,16 @@ def create_subscriptions_table(dynamodb):
             AttributeDefinitions=[
                 {'AttributeName': 'email',       'AttributeType': 'S'},
                 {'AttributeName': 'title#album', 'AttributeType': 'S'},
+                {'AttributeName': 'artist',      'AttributeType': 'S'},
+            ],
+            GlobalSecondaryIndexes=[
+                {
+                    'IndexName': 'artist-index',
+                    'KeySchema': [
+                        {'AttributeName': 'artist', 'KeyType': 'HASH'},
+                    ],
+                    'Projection': {'ProjectionType': 'ALL'}
+                }
             ],
             BillingMode='PAY_PER_REQUEST'
         )
