@@ -35,7 +35,7 @@ def register():
     existing_user = login_table.get_item(Key={"email": email})
 
     if "Item" in existing_user:
-        return jsonify({"message": "User already exists"}), 409
+        return jsonify({"message": "The email already exists"}), 409
 
     login_table.put_item(
         Item={
@@ -65,11 +65,8 @@ def login():
     response = login_table.get_item(Key={"email": email})
     user = response.get("Item")
 
-    if not user:
-        return jsonify({"message": "User not found"}), 404
-
-    if user.get("password") != password:
-        return jsonify({"message": "Invalid password"}), 401
+    if not user or user.get("password") != password:
+        return jsonify({"message": "email or password is invalid"}), 401
 
     return jsonify({
         "message": "Login successful",

@@ -18,9 +18,9 @@ A cloud-based music subscription web application built with Python and AWS servi
 ```bash
 cd setup
 python create_login_table.py
-python create_music_table.py
-python load_music_data.py
-python upload_images_s3.py
+python create_music_table.py       # also loads song data from 2026a2_songs.json
+python create_subscriptions_table.py
+python upload_images_to_s3.py
 ```
 
 ### 2. Backend
