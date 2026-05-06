@@ -3,9 +3,9 @@ import boto3
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 
-dynamodb      = boto3.resource('dynamodb', region_name='us-east-1')
-music_table   = dynamodb.Table('music')
-sub_table     = dynamodb.Table('subscriptions')
+dynamodb    = boto3.resource('dynamodb', region_name='us-east-1')
+music_table = dynamodb.Table('music')
+sub_table   = dynamodb.Table('subscriptions')
 
 CORS_HEADERS = {
     'Access-Control-Allow-Origin':  '*',
@@ -30,26 +30,55 @@ def get_music(params):
     album  = params.get('album',  '').strip()
 
     try:
-        # Use Query (efficient) when artist is provided
-        if artist:
+        songs = []
+
+        # ── Strategy 1: artist + year → use LSI (artist-year-index) ──────────
+        # Most efficient for demo query: "Find all songs by Jimmy Buffett in 1974"
+        if artist and year:
+            result = music_table.query(
+                IndexName='artist-year-index',
+                KeyConditionExpression=Key('artist').eq(artist) & Key('year').eq(year)
+            )
+            songs = result.get('Items', [])
+
+        # ── Strategy 2: artist only → main table Query on PK ─────────────────
+        elif artist:
             result = music_table.query(
                 KeyConditionExpression=Key('artist').eq(artist)
             )
-            items = result.get('Items', [])
+            songs = result.get('Items', [])
+
+        # ── Strategy 3: title only → use GSI (title-year-index) ──────────────
+        # Avoids full table scan when only title is provided
+        elif title and not year:
+            result = music_table.query(
+                IndexName='title-year-index',
+                KeyConditionExpression=Key('title').eq(title)
+            )
+            songs = result.get('Items', [])
+
+        # ── Strategy 4: title + year → use GSI with both keys ────────────────
+        elif title and year:
+            result = music_table.query(
+                IndexName='title-year-index',
+                KeyConditionExpression=Key('title').eq(title) & Key('year').eq(year)
+            )
+            songs = result.get('Items', [])
+
+        # ── Strategy 5: no artist/title → Scan (last resort) ─────────────────
         else:
-            # Fall back to Scan only when no partition key is available
             result = music_table.scan()
-            items  = result.get('Items', [])
+            songs  = result.get('Items', [])
 
-        # Apply in-memory filters for remaining attributes
-        if title:
-            items = [i for i in items if title.lower() in i.get('title', '').lower()]
-        if year:
-            items = [i for i in items if i.get('year', '') == year]
+        # ── In-memory filter for album (no index on album) ────────────────────
         if album:
-            items = [i for i in items if album.lower() in i.get('album', '').lower()]
+            songs = [s for s in songs if album.lower() in s.get('album', '').lower()]
 
-        return response(200, {'songs': items})
+        # ── In-memory year filter when year-only search (no index used above) ─
+        if year and not artist and not title:
+            songs = [s for s in songs if s.get('year', '') == year]
+
+        return response(200, {'songs': songs})
 
     except ClientError as e:
         return response(500, {'message': 'Database error', 'error': str(e)})
