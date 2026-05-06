@@ -28,9 +28,9 @@ def login(email, password):
 
     item = result.get('Item')
     if not item:
-        return response(401, {'message': 'Invalid email or password'})
+        return response(401, {'message': 'email or password is invalid'})
     if item['password'] != password:
-        return response(401, {'message': 'Invalid email or password'})
+        return response(401, {'message': 'email or password is invalid'})
 
     return response(200, {
         'message': 'Login successful',

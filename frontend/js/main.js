@@ -91,13 +91,19 @@ async function searchSongs() {
   const year   = document.getElementById('srYear').value.trim();
   const album  = document.getElementById('srAlbum').value.trim();
 
+  const grid = document.getElementById('songResults');
+
+  if (!artist && !title && !year && !album) {
+    grid.innerHTML = '<p class="empty-msg">Please enter at least one search field.</p>';
+    return;
+  }
+
   const params = new URLSearchParams();
   if (artist) params.append('artist', artist);
   if (title)  params.append('title',  title);
   if (year)   params.append('year',   year);
   if (album)  params.append('album',  album);
 
-  const grid = document.getElementById('songResults');
   grid.innerHTML = '<p class="empty-msg">Searching...</p>';
 
   try {
@@ -106,7 +112,7 @@ async function searchSongs() {
     const songs = data.songs || [];
 
     if (songs.length === 0) {
-      grid.innerHTML = '<p class="empty-msg">No songs found.</p>';
+      grid.innerHTML = '<p class="empty-msg">No result is retrieved. Please query again</p>';
       return;
     }
 
