@@ -9,11 +9,35 @@ CORS(app)
 
 REGION = os.getenv("AWS_REGION", "us-east-1")
 
-dynamodb = boto3.resource("dynamodb", region_name=REGION)
+dynamodb  = boto3.resource("dynamodb", region_name=REGION)
+s3_client = boto3.client("s3", region_name=REGION)
+
+BUCKET_NAME = "music-app-images-s4110587"
 
 login_table         = dynamodb.Table(os.getenv("LOGIN_TABLE",         "login"))
 music_table         = dynamodb.Table(os.getenv("MUSIC_TABLE",         "music"))
 subscriptions_table = dynamodb.Table(os.getenv("SUBSCRIPTIONS_TABLE", "subscriptions"))
+
+
+def presigned_url(original_url, expiry=3600):
+    """Replace stored image URL with a pre-signed S3 URL."""
+    if not original_url:
+        return original_url
+    filename = original_url.split("/")[-1]
+    try:
+        return s3_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": BUCKET_NAME, "Key": f"images/{filename}"},
+            ExpiresIn=expiry
+        )
+    except Exception:
+        return original_url
+
+
+def attach_presigned_urls(items):
+    for item in items:
+        item["image_url"] = presigned_url(item.get("image_url", ""))
+    return items
 
 
 @app.route("/health", methods=["GET"])
@@ -119,7 +143,7 @@ def get_music():
             songs = [s for s in songs if s.get("year", "") == year]
 
 
-        return jsonify({"songs": songs}), 200
+        return jsonify({"songs": attach_presigned_urls(songs)}), 200
 
     except Exception as e:
         return jsonify({"message": "Error retrieving music", "error": str(e)}), 500
@@ -136,7 +160,7 @@ def get_subscriptions():
         result = subscriptions_table.query(
             KeyConditionExpression=Key("email").eq(email)
         )
-        return jsonify({"subscriptions": result.get("Items", [])}), 200
+        return jsonify({"subscriptions": attach_presigned_urls(result.get("Items", []))}), 200
 
     except Exception as e:
         return jsonify({"message": "Error retrieving subscriptions", "error": str(e)}), 500

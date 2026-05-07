@@ -6,6 +6,31 @@ from boto3.dynamodb.conditions import Key
 dynamodb    = boto3.resource('dynamodb', region_name='us-east-1')
 music_table = dynamodb.Table('music')
 sub_table   = dynamodb.Table('subscriptions')
+s3_client   = boto3.client('s3', region_name='us-east-1')
+
+BUCKET_NAME = 'music-app-images-s4110587'
+
+
+def presigned_url(original_url, expiry=3600):
+    """Replace stored image URL with a pre-signed S3 URL."""
+    if not original_url:
+        return original_url
+    filename = original_url.split('/')[-1]
+    try:
+        return s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': BUCKET_NAME, 'Key': f'images/{filename}'},
+            ExpiresIn=expiry
+        )
+    except Exception:
+        return original_url  # fallback to original URL if S3 fails
+
+
+def attach_presigned_urls(items):
+    """Add pre-signed S3 image URL to each item."""
+    for item in items:
+        item['image_url'] = presigned_url(item.get('image_url', ''))
+    return items
 
 CORS_HEADERS = {
     'Access-Control-Allow-Origin':  '*',
@@ -77,7 +102,7 @@ def get_music(params):
         if year and not artist and not title:
             songs = [s for s in songs if s.get('year', '') == year]
 
-        return response(200, {'songs': songs})
+        return response(200, {'songs': attach_presigned_urls(songs)})
 
     except ClientError as e:
         return response(500, {'message': 'Database error', 'error': str(e)})
@@ -91,7 +116,7 @@ def get_subscriptions(email):
         result = sub_table.query(
             KeyConditionExpression=Key('email').eq(email)
         )
-        return response(200, {'subscriptions': result.get('Items', [])})
+        return response(200, {'subscriptions': attach_presigned_urls(result.get('Items', []))})
     except ClientError as e:
         return response(500, {'message': 'Database error', 'error': str(e)})
 
