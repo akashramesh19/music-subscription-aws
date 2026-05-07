@@ -102,6 +102,11 @@ def get_music():
                 KeyConditionExpression=Key("artist").eq(artist) & Key("year").eq(year)
             )
             songs = result.get("Items", [])
+            if not songs:
+                all_items = music_table.scan().get("Items", [])
+                songs = [i for i in all_items
+                         if i.get("artist", "").lower() == artist.lower()
+                         and i.get("year", "") == year]
 
         # ── Strategy 2: artist only → use main table Query (PK) ──────────────
         elif artist:
@@ -109,6 +114,10 @@ def get_music():
                 KeyConditionExpression=Key("artist").eq(artist)
             )
             songs = result.get("Items", [])
+            if not songs:
+                all_items = music_table.scan().get("Items", [])
+                songs = [i for i in all_items
+                         if i.get("artist", "").lower() == artist.lower()]
 
         # ── Strategy 3: title only → use GSI (title-year-index) ──────────────
         elif title and not year:
