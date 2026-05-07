@@ -15,7 +15,7 @@ def presigned_url(original_url, expiry=3600):
     """Replace stored image URL with a pre-signed S3 URL."""
     if not original_url:
         return original_url
-    filename = original_url.split('/')[-1]
+    filename = original_url.split('/')[-1].split('?')[0]
     try:
         return s3_client.generate_presigned_url(
             'get_object',
@@ -47,7 +47,7 @@ def response(status_code, body):
     }
 
 
-# ── GET /music?artist=&title=&year=&album= ────────────────────────────────────
+# GET function
 def get_music(params):
     artist = params.get('artist', '').strip()
     title  = params.get('title',  '').strip()
@@ -57,7 +57,7 @@ def get_music(params):
     try:
         songs = []
 
-        # ── Strategy 1: artist + year → use LSI (artist-year-index) ──────────
+        # Strategy 1: artist + year -- use LSI (artist-year-index)
         # Most efficient for demo query: "Find all songs by Jimmy Buffett in 1974"
         if artist and year:
             result = music_table.query(
@@ -72,7 +72,7 @@ def get_music(params):
                          if i.get('artist', '').lower() == artist.lower()
                          and i.get('year', '') == year]
 
-        # ── Strategy 2: artist only → main table Query on PK ─────────────────
+        # Strategy 2: artist only -- main table Query on PK
         elif artist:
             result = music_table.query(
                 KeyConditionExpression=Key('artist').eq(artist)
@@ -105,11 +105,11 @@ def get_music(params):
             result = music_table.scan()
             songs  = result.get('Items', [])
 
-        # ── In-memory filter for album (no index on album) ────────────────────
+        # In-memory filter for album (no index on album)
         if album:
             songs = [s for s in songs if album.lower() in s.get('album', '').lower()]
 
-        # ── In-memory year filter when year-only search ────────────────────────
+        # In-memory year filter when year-only search
         if year and not artist and not title:
             songs = [s for s in songs if s.get('year', '') == year]
 
@@ -119,7 +119,7 @@ def get_music(params):
         return response(500, {'message': 'Database error', 'error': str(e)})
 
 
-# ── GET /subscriptions?email= ─────────────────────────────────────────────────
+# GET /subscriptions?email
 def get_subscriptions(email):
     if not email:
         return response(400, {'message': 'email is required'})
@@ -132,7 +132,7 @@ def get_subscriptions(email):
         return response(500, {'message': 'Database error', 'error': str(e)})
 
 
-# ── POST /subscribe ───────────────────────────────────────────────────────────
+# POST /subscribe 
 def subscribe(body):
     email     = body.get('email',     '').strip()
     title     = body.get('title',     '').strip()
@@ -159,7 +159,7 @@ def subscribe(body):
         return response(500, {'message': 'Failed to subscribe', 'error': str(e)})
 
 
-# ── DELETE /unsubscribe ───────────────────────────────────────────────────────
+# DELETE /unsubscribe 
 def unsubscribe(body):
     email = body.get('email', '').strip()
     title = body.get('title', '').strip()
@@ -178,7 +178,7 @@ def unsubscribe(body):
         return response(500, {'message': 'Failed to unsubscribe', 'error': str(e)})
 
 
-# ── Router ────────────────────────────────────────────────────────────────────
+# Router
 def lambda_handler(event, context):
     if event.get('httpMethod') == 'OPTIONS':
         return response(200, {})

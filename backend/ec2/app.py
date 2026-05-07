@@ -23,7 +23,7 @@ def presigned_url(original_url, expiry=3600):
     """Replace stored image URL with a pre-signed S3 URL."""
     if not original_url:
         return original_url
-    filename = original_url.split("/")[-1]
+    filename = original_url.split("/")[-1].split("?")[0]
     try:
         return s3_client.generate_presigned_url(
             "get_object",
