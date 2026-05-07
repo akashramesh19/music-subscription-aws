@@ -22,7 +22,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       window.location.href = 'main.html';
     } else {
       msg.className   = 'msg error';
-      msg.textContent = data.message || 'Login failed. Please try again.';
+      msg.textContent = 'email or password is invalid';
     }
   } catch (err) {
     msg.className   = 'msg error';

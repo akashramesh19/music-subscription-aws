@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 
 
 AWS_REGION  = 'us-east-1'
-BUCKET_NAME = 'music-app-images-yourstudentnumber'  # Change this
+BUCKET_NAME = 'music-app-images-s4110587'  # Change this
 JSON_FILE   = '2026a2_songs.json'
 
 def create_bucket(s3):
@@ -69,45 +69,53 @@ def download_and_upload(s3, url_map):
 
     print(f"\nUpload complete: {success} succeeded, {failed} failed.")
 
-def make_bucket_public(s3_client):
-    policy = json.dumps({
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Sid": "PublicReadGetObject",
-            "Effect": "Allow",
-            "Principal": "*",
-            "Action": "s3:GetObject",
-            "Resource": f"arn:aws:s3:::{BUCKET_NAME}/*"
-        }]
-    })
+def ensure_bucket_private(s3_client):
+    """
+    Keep the bucket private (security best practice).
+    Images are served via pre-signed URLs generated at request time,
+    so no public access policy is required.
+    """
     try:
         s3_client.put_public_access_block(
             Bucket=BUCKET_NAME,
             PublicAccessBlockConfiguration={
-                'BlockPublicAcls': False,
-                'IgnorePublicAcls': False,
-                'BlockPublicPolicy': False,
-                'RestrictPublicBuckets': False
+                'BlockPublicAcls':       True,
+                'IgnorePublicAcls':      True,
+                'BlockPublicPolicy':     True,
+                'RestrictPublicBuckets': True
             }
         )
-        s3_client.put_bucket_policy(Bucket=BUCKET_NAME, Policy=policy)
-        print(f"Bucket '{BUCKET_NAME}' is now publicly readable.")
+        print(f"Bucket '{BUCKET_NAME}' is private (secure).")
     except Exception as e:
-        print(f"Could not set public policy: {e}")
-        print("You may need to set this manually in the console.")
+        print(f"Could not enforce private access block: {e}")
+
+
+def generate_presigned_url(s3_client, key, expiry=3600):
+    """Return a pre-signed URL for the given S3 key (valid for expiry seconds)."""
+    return s3_client.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': BUCKET_NAME, 'Key': key},
+        ExpiresIn=expiry
+    )
+
 
 def main():
     s3_resource = boto3.resource('s3', region_name=AWS_REGION)
     s3_client   = boto3.client('s3',   region_name=AWS_REGION)
 
     create_bucket(s3_resource)
-    make_bucket_public(s3_client)
+    ensure_bucket_private(s3_client)   # keep bucket private — use pre-signed URLs
 
     url_map = get_unique_image_urls(JSON_FILE)
     download_and_upload(s3_client, url_map)
 
-    print(f"\nDone! Images are at:")
-    print(f"  https://{BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com/images/<filename>")
+    # Example: generate a pre-signed URL for one image (expires in 1 hour)
+    sample_key = f"images/{next(iter(url_map))}"
+    sample_url = generate_presigned_url(s3_client, sample_key)
+    print(f"\nDone! Example pre-signed URL (expires in 1 hour):")
+    print(f"  {sample_url}")
+    print(f"\nNote: Generate pre-signed URLs at request time in the backend,")
+    print(f"  not at upload time, so they remain valid when served to the browser.")
 
 if __name__ == '__main__':
     main()
