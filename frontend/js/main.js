@@ -93,6 +93,7 @@ async function searchSongs() {
 
   const grid = document.getElementById('songResults');
 
+  // At least one field must be completed
   if (!artist && !title && !year && !album) {
     grid.innerHTML = '<p class="empty-msg">Please enter at least one search field.</p>';
     return;

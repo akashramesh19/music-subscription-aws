@@ -8,62 +8,66 @@ JSON_FILE  = '2026a2_songs.json'
 
 def create_music_table(dynamodb):
     """
-    Create the music table.
-
-    Key schema:
-      PK : artist      (String)
-      SK : title#album (String) - composite prevents duplicate song+album per artist
-
-    LSI  artist-year-lsi  : PK=artist, SK=year
-      → efficient range queries like "all Taylor Swift songs from 2008"
-        using Query instead of Scan + in-memory filter
-
-    GSI  year-index        : PK=year
-      → efficient lookup of all songs from a specific year
-        without scanning the full table
+    Create the music table with:
+      - PK: artist (partition key)
+      - SK: title#album (sort key)
+      - LSI: artist (PK) + year (SK)  → query songs by artist in a given year
+      - GSI: title (PK) + year (SK)   → query songs by title or across years
     """
     try:
         table = dynamodb.create_table(
             TableName=TABLE_NAME,
             KeySchema=[
-                {'AttributeName': 'artist',      'KeyType': 'HASH'},
-                {'AttributeName': 'title#album', 'KeyType': 'RANGE'},
+                {'AttributeName': 'artist',      'KeyType': 'HASH'},   # Partition key
+                {'AttributeName': 'title#album', 'KeyType': 'RANGE'},  # Sort key
             ],
             AttributeDefinitions=[
                 {'AttributeName': 'artist',      'AttributeType': 'S'},
                 {'AttributeName': 'title#album', 'AttributeType': 'S'},
                 {'AttributeName': 'year',        'AttributeType': 'S'},
+                {'AttributeName': 'title',       'AttributeType': 'S'},
             ],
+
+            # ── LSI: same PK (artist), different SK (year) ──────────────────
+            # Use case: "Find all songs by Jimmy Buffett in 1974"
             LocalSecondaryIndexes=[
                 {
-                    'IndexName': 'artist-year-lsi',
+                    'IndexName': 'artist-year-index',
                     'KeySchema': [
                         {'AttributeName': 'artist', 'KeyType': 'HASH'},
                         {'AttributeName': 'year',   'KeyType': 'RANGE'},
                     ],
-                    'Projection': {'ProjectionType': 'ALL'}
+                    'Projection': {'ProjectionType': 'ALL'},
                 }
             ],
+
+            # ── GSI: different PK (title), SK (year) ────────────────────────
+            # Use case: "Find a song by its title" or "Find songs by title in a year"
             GlobalSecondaryIndexes=[
                 {
-                    'IndexName': 'year-index',
+                    'IndexName': 'title-year-index',
                     'KeySchema': [
-                        {'AttributeName': 'year', 'KeyType': 'HASH'},
+                        {'AttributeName': 'title', 'KeyType': 'HASH'},
+                        {'AttributeName': 'year',  'KeyType': 'RANGE'},
                     ],
-                    'Projection': {'ProjectionType': 'ALL'}
+                    'Projection': {'ProjectionType': 'ALL'},
                 }
             ],
+
             BillingMode='PAY_PER_REQUEST'
         )
-        print(f"Creating table '{TABLE_NAME}'...")
+
+        print(f"Creating table '{TABLE_NAME}' with LSI and GSI...")
         table.wait_until_exists()
         print(f"Table '{TABLE_NAME}' created successfully.")
         return table
+
     except ClientError as e:
         if e.response['Error']['Code'] == 'ResourceInUseException':
             print(f"Table '{TABLE_NAME}' already exists, using existing table.")
             return dynamodb.Table(TABLE_NAME)
         raise
+
 
 def load_songs(table, json_file):
     """Load all songs from JSON file into the music table."""
@@ -82,23 +86,23 @@ def load_songs(table, json_file):
 
     for song in songs:
         try:
-            title  = song.get('title',   '').strip()
-            artist = song.get('artist',  '').strip()
-            year   = song.get('year',    '').strip()
-            album  = song.get('album',   '').strip()
-            # Note: JSON uses img_url, we store as image_url per spec
+            title     = song.get('title',   '').strip()
+            artist    = song.get('artist',  '').strip()
+            year      = song.get('year',    '').strip()
+            album     = song.get('album',   '').strip()
+            # JSON uses img_url; spec calls it image_url — store both keys for safety
             image_url = song.get('img_url', song.get('image_url', '')).strip()
 
             table.put_item(Item={
-                'artist':     artist,
+                'artist':      artist,
                 'title#album': f"{title}#{album}",  # Composite sort key
-                'title':      title,
-                'year':       year,
-                'album':      album,
-                'image_url':  image_url
+                'title':       title,
+                'year':        year,
+                'album':       album,
+                'image_url':   image_url,
             })
             success += 1
-            print(f"  [{success}] Loaded: {artist} — {title} ({album})")
+            print(f"  [{success}] Loaded: {artist} — {title} ({album}, {year})")
 
         except Exception as e:
             failed += 1
@@ -107,8 +111,9 @@ def load_songs(table, json_file):
     print(f"\nLoad complete: {success} succeeded, {failed} failed.")
     return success
 
+
 def verify_table(table):
-    """Verify the total count matches expected."""
+    """Verify total item count matches expected 137."""
     print("\nVerifying table contents...")
     response = table.scan(Select='COUNT')
     count = response.get('Count', 0)
@@ -118,12 +123,13 @@ def verify_table(table):
     else:
         print(f"WARNING — expected 137 songs but found {count}.")
 
+
 def main():
     dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
     table = create_music_table(dynamodb)
     load_songs(table, JSON_FILE)
     verify_table(table)
-    print("\nDone! Music table is ready.")
+    print("\nDone! Music table is ready with GSI and LSI indexes.")
 
 if __name__ == '__main__':
     main()
