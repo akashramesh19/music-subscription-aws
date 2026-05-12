@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 
 
 AWS_REGION  = 'us-east-1'
-BUCKET_NAME = 'music-app-images-s4110587'  # Change this
+BUCKET_NAME = 'music-app-images-s4110587'  
 JSON_FILE   = '2026a2_songs.json'
 
 def create_bucket(s3):
@@ -32,12 +32,11 @@ def get_unique_image_urls(json_file):
 
     songs = data.get('songs', data) if isinstance(data, dict) else data
 
-    # Map: filename -> url (deduplicated by filename)
     url_map = {}
     for song in songs:
         url = song.get('img_url', song.get('image_url', '')).strip()
         if url:
-            filename = url.split('/')[-1]  # e.g. TaylorSwift.jpg
+            filename = url.split('/')[-1]  
             url_map[filename] = url
 
     print(f"Found {len(url_map)} unique artist images to download.")
@@ -53,7 +52,6 @@ def download_and_upload(s3, url_map):
             response = requests.get(url, timeout=10)
             response.raise_for_status()
 
-            # Upload to S3
             s3.put_object(
                 Bucket=BUCKET_NAME,
                 Key=f"images/{filename}",
@@ -104,12 +102,11 @@ def main():
     s3_client   = boto3.client('s3',   region_name=AWS_REGION)
 
     create_bucket(s3_resource)
-    ensure_bucket_private(s3_client)   # keep bucket private — use pre-signed URLs
+    ensure_bucket_private(s3_client)   
 
     url_map = get_unique_image_urls(JSON_FILE)
     download_and_upload(s3_client, url_map)
 
-    # Example: generate a pre-signed URL for one image (expires in 1 hour)
     sample_key = f"images/{next(iter(url_map))}"
     sample_url = generate_presigned_url(s3_client, sample_key)
     print(f"\nDone! Example pre-signed URL (expires in 1 hour):")

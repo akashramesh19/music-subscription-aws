@@ -43,7 +43,6 @@ def register(email, user_name, password):
     if not email or not user_name or not password:
         return response(400, {'message': 'email, user_name and password are required'})
 
-    # Check if email already exists
     try:
         result = table.get_item(Key={'email': email})
     except ClientError as e:
@@ -65,7 +64,7 @@ def register(email, user_name, password):
 
 
 def lambda_handler(event, context):
-    # Handle CORS preflight
+
     if event.get('httpMethod') == 'OPTIONS':
         return response(200, {})
 

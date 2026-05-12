@@ -16,7 +16,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const data = await res.json();
 
     if (res.ok) {
-      // Store user info for main page
       sessionStorage.setItem('user_email',    data.email);
       sessionStorage.setItem('user_name',     data.user_name);
       window.location.href = 'main.html';

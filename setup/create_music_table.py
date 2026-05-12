@@ -18,8 +18,8 @@ def create_music_table(dynamodb):
         table = dynamodb.create_table(
             TableName=TABLE_NAME,
             KeySchema=[
-                {'AttributeName': 'artist',      'KeyType': 'HASH'},   # Partition key
-                {'AttributeName': 'title#album', 'KeyType': 'RANGE'},  # Sort key
+                {'AttributeName': 'artist',      'KeyType': 'HASH'},   
+                {'AttributeName': 'title#album', 'KeyType': 'RANGE'},  
             ],
             AttributeDefinitions=[
                 {'AttributeName': 'artist',      'AttributeType': 'S'},
@@ -28,8 +28,6 @@ def create_music_table(dynamodb):
                 {'AttributeName': 'title',       'AttributeType': 'S'},
             ],
 
-            # ── LSI: same PK (artist), different SK (year) ──────────────────
-            # Use case: "Find all songs by Jimmy Buffett in 1974"
             LocalSecondaryIndexes=[
                 {
                     'IndexName': 'artist-year-index',
@@ -41,8 +39,6 @@ def create_music_table(dynamodb):
                 }
             ],
 
-            # ── GSI: different PK (title), SK (year) ────────────────────────
-            # Use case: "Find a song by its title" or "Find songs by title in a year"
             GlobalSecondaryIndexes=[
                 {
                     'IndexName': 'title-year-index',
@@ -76,7 +72,6 @@ def load_songs(table, json_file):
     with open(json_file, 'r') as f:
         data = json.load(f)
 
-    # Handle both {"songs": [...]} and [...] formats
     songs = data.get('songs', data) if isinstance(data, dict) else data
 
     print(f"Found {len(songs)} songs to load.")
@@ -90,12 +85,11 @@ def load_songs(table, json_file):
             artist    = song.get('artist',  '').strip()
             year      = song.get('year',    '').strip()
             album     = song.get('album',   '').strip()
-            # JSON uses img_url; spec calls it image_url — store both keys for safety
             image_url = song.get('img_url', song.get('image_url', '')).strip()
 
             table.put_item(Item={
                 'artist':      artist,
-                'title#album': f"{title}#{album}",  # Composite sort key
+                'title#album': f"{title}#{album}",  
                 'title':       title,
                 'year':        year,
                 'album':       album,

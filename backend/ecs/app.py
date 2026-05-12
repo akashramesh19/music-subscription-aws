@@ -20,7 +20,6 @@ subscriptions_table = dynamodb.Table(os.getenv("SUBSCRIPTIONS_TABLE", "subscript
 
 
 def presigned_url(original_url, expiry=3600):
-    """Replace stored image URL with a pre-signed S3 URL."""
     if not original_url:
         return original_url
     filename = original_url.split("/")[-1].split("?")[0]
@@ -95,7 +94,6 @@ def get_music():
     try:
         songs = []
 
-        # ── Strategy 1: artist + year → use LSI (artist-year-index) ──────────
         if artist and year:
             result = music_table.query(
                 IndexName="artist-year-index",
@@ -108,7 +106,6 @@ def get_music():
                          if i.get("artist", "").lower() == artist.lower()
                          and i.get("year", "") == year]
 
-        # ── Strategy 2: artist only → use main table Query (PK) ──────────────
         elif artist:
             result = music_table.query(
                 KeyConditionExpression=Key("artist").eq(artist)
@@ -119,7 +116,6 @@ def get_music():
                 songs = [i for i in all_items
                          if i.get("artist", "").lower() == artist.lower()]
 
-        # ── Strategy 3: title only → use GSI (title-year-index) ──────────────
         elif title and not year:
             result = music_table.query(
                 IndexName="title-year-index",
@@ -127,7 +123,6 @@ def get_music():
             )
             songs = result.get("Items", [])
 
-        # ── Strategy 4: title + year → use GSI with both keys ─────────────────
         elif title and year:
             result = music_table.query(
                 IndexName="title-year-index",
@@ -135,7 +130,6 @@ def get_music():
             )
             songs = result.get("Items", [])
 
-        # ── Strategy 5: no artist/title → Scan (last resort) ─────────────────
         else:
             result = music_table.scan()
             songs  = result.get("Items", [])
@@ -143,11 +137,9 @@ def get_music():
                 result = music_table.scan(ExclusiveStartKey=result["LastEvaluatedKey"])
                 songs.extend(result.get("Items", []))
 
-        # ── In-memory filter for album (no index on album) ────────────────────
         if album:
             songs = [s for s in songs if album.lower() in s.get("album", "").lower()]
 
-        # ── In-memory year filter when not already handled by index ───────────
         if year and not artist and not title:
             songs = [s for s in songs if s.get("year", "") == year]
 
