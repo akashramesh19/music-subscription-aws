@@ -12,7 +12,6 @@ BUCKET_NAME = 'music-app-images-s4110587'
 
 
 def presigned_url(original_url, expiry=3600):
-    """Replace stored image URL with a pre-signed S3 URL."""
     if not original_url:
         return original_url
     filename = original_url.split('/')[-1].split('?')[0]
@@ -23,11 +22,10 @@ def presigned_url(original_url, expiry=3600):
             ExpiresIn=expiry
         )
     except Exception:
-        return original_url  # fallback to original URL if S3 fails
+        return original_url 
 
 
 def attach_presigned_urls(items):
-    """Add pre-signed S3 image URL to each item."""
     for item in items:
         item['image_url'] = presigned_url(item.get('image_url', ''))
     return items
@@ -47,7 +45,6 @@ def response(status_code, body):
     }
 
 
-# GET function
 def get_music(params):
     artist = params.get('artist', '').strip()
     title  = params.get('title',  '').strip()
@@ -57,34 +54,28 @@ def get_music(params):
     try:
         songs = []
 
-        # Strategy 1: artist + year -- use LSI (artist-year-index)
-        # Most efficient for demo query: "Find all songs by Jimmy Buffett in 1974"
         if artist and year:
             result = music_table.query(
                 IndexName='artist-year-index',
                 KeyConditionExpression=Key('artist').eq(artist) & Key('year').eq(year)
             )
             songs = result.get('Items', [])
-            # Case-insensitive fallback if exact match returns nothing
             if not songs:
                 all_items = music_table.scan().get('Items', [])
                 songs = [i for i in all_items
                          if i.get('artist', '').lower() == artist.lower()
                          and i.get('year', '') == year]
 
-        # Strategy 2: artist only -- main table Query on PK
         elif artist:
             result = music_table.query(
                 KeyConditionExpression=Key('artist').eq(artist)
             )
             songs = result.get('Items', [])
-            # Case-insensitive fallback if exact match returns nothing
             if not songs:
                 all_items = music_table.scan().get('Items', [])
                 songs = [i for i in all_items
                          if i.get('artist', '').lower() == artist.lower()]
 
-        # ── Strategy 3: title only → use GSI (title-year-index) ──────────────
         elif title and not year:
             result = music_table.query(
                 IndexName='title-year-index',
@@ -92,7 +83,6 @@ def get_music(params):
             )
             songs = result.get('Items', [])
 
-        # ── Strategy 4: title + year → use GSI with both keys ────────────────
         elif title and year:
             result = music_table.query(
                 IndexName='title-year-index',
@@ -100,16 +90,13 @@ def get_music(params):
             )
             songs = result.get('Items', [])
 
-        # ── Strategy 5: no artist/title → Scan (last resort) ─────────────────
         else:
             result = music_table.scan()
             songs  = result.get('Items', [])
 
-        # In-memory filter for album (no index on album)
         if album:
             songs = [s for s in songs if album.lower() in s.get('album', '').lower()]
 
-        # In-memory year filter when year-only search
         if year and not artist and not title:
             songs = [s for s in songs if s.get('year', '') == year]
 
@@ -119,7 +106,6 @@ def get_music(params):
         return response(500, {'message': 'Database error', 'error': str(e)})
 
 
-# GET /subscriptions?email
 def get_subscriptions(email):
     if not email:
         return response(400, {'message': 'email is required'})
@@ -132,7 +118,6 @@ def get_subscriptions(email):
         return response(500, {'message': 'Database error', 'error': str(e)})
 
 
-# POST /subscribe 
 def subscribe(body):
     email     = body.get('email',     '').strip()
     title     = body.get('title',     '').strip()
@@ -159,7 +144,6 @@ def subscribe(body):
         return response(500, {'message': 'Failed to subscribe', 'error': str(e)})
 
 
-# DELETE /unsubscribe 
 def unsubscribe(body):
     email = body.get('email', '').strip()
     title = body.get('title', '').strip()
@@ -178,7 +162,6 @@ def unsubscribe(body):
         return response(500, {'message': 'Failed to unsubscribe', 'error': str(e)})
 
 
-# Router
 def lambda_handler(event, context):
     if event.get('httpMethod') == 'OPTIONS':
         return response(200, {})

@@ -8,7 +8,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
 
-    /* ── Navbar ── */
     nav {
       background: #1a1a2e;
       color: #fff;
@@ -30,10 +29,8 @@
     }
     #logoutBtn:hover { background: #c53030; }
 
-    /* ── Layout ── */
     .container { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
 
-    /* ── Sections ── */
     section {
       background: #fff;
       border-radius: 12px;
@@ -43,7 +40,6 @@
     }
     section h2 { margin-bottom: 1.2rem; color: #1a1a2e; font-size: 1.1rem; }
 
-    /* ── Search form ── */
     .search-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -70,7 +66,6 @@
     }
     .btn-primary:hover { background: #4338ca; }
 
-    /* ── Song cards ── */
     .songs-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -108,7 +103,6 @@
     .btn-subscribe:hover { background: #059669; }
     .btn-subscribe:disabled { background: #9ca3af; cursor: not-allowed; }
 
-    /* ── Subscriptions ── */
     .sub-card {
       border: 1px solid #e5e7eb;
       border-radius: 10px;
@@ -156,7 +150,6 @@
 </head>
 <body>
 
-  <!-- Navbar -->
   <nav>
     <h1>🎵 Music Subscription</h1>
     <span>Welcome, <strong id="navUser"></strong></span>
@@ -165,14 +158,12 @@
 
   <div class="container">
 
-    <!-- My Subscriptions -->
     <section>
       <h2>🎧 My Subscriptions</h2>
       <div class="msg-banner" id="subMsg"></div>
       <div id="subList"><p class="empty-msg">Loading subscriptions...</p></div>
     </section>
 
-    <!-- Search Songs -->
     <section>
       <h2>🔍 Search Songs</h2>
       <div class="search-grid">

@@ -1,4 +1,4 @@
-// ── Auth guard ────────────────────────────────────────────────────────────────
+
 const email    = sessionStorage.getItem('user_email');
 const userName = sessionStorage.getItem('user_name');
 
@@ -8,13 +8,11 @@ if (!email) {
 
 document.getElementById('navUser').textContent = userName || email;
 
-// ── Logout ────────────────────────────────────────────────────────────────────
 document.getElementById('logoutBtn').addEventListener('click', () => {
   sessionStorage.clear();
   window.location.href = 'login.html';
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function showMsg(id, text, type) {
   const el = document.getElementById(id);
   el.textContent = text;
@@ -26,7 +24,6 @@ function imgSrc(url) {
   return url || 'https://placehold.co/220x130?text=No+Image';
 }
 
-// ── Subscriptions ─────────────────────────────────────────────────────────────
 async function loadSubscriptions() {
   const list = document.getElementById('subList');
   try {
@@ -54,7 +51,6 @@ async function loadSubscriptions() {
       </div>
     `).join('');
 
-    // Attach remove listeners
     list.querySelectorAll('.btn-remove').forEach(btn => {
       btn.addEventListener('click', () => unsubscribe(btn.dataset.title, btn.dataset.album));
     });
@@ -82,7 +78,6 @@ async function unsubscribe(title, album) {
   }
 }
 
-// ── Search ────────────────────────────────────────────────────────────────────
 document.getElementById('searchBtn').addEventListener('click', searchSongs);
 
 async function searchSongs() {
@@ -93,7 +88,6 @@ async function searchSongs() {
 
   const grid = document.getElementById('songResults');
 
-  // At least one field must be completed
   if (!artist && !title && !year && !album) {
     grid.innerHTML = '<p class="empty-msg">Please enter at least one search field.</p>';
     return;
@@ -177,5 +171,4 @@ async function subscribe(btn) {
   }
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
 loadSubscriptions();
